@@ -16,16 +16,17 @@ export class AlutsistaAssetContract extends Contract {
     }
 
     @Transaction()
-    public async createAlutsistaAsset(ctx: Context, alutsistaAssetId: string, value: string, countryOrigin: string): Promise<void> {
+    public async createAlutsistaAsset(ctx: Context, alutsistaAssetId: string, name: string, countryOrigin: string): Promise<void> {
         const exists: boolean = await this.alutsistaAssetExists(ctx, alutsistaAssetId);
         if (exists) {
             throw new Error(`The alutsista asset ${alutsistaAssetId} already exists`);
         }
         const alutsistaAsset: AlutsistaAsset = new AlutsistaAsset();
-        alutsistaAsset.value = value;
+        alutsistaAsset.name = name;
+        alutsistaAsset.countryOrigin = countryOrigin;
         const buffer: Buffer = Buffer.from(JSON.stringify(alutsistaAsset));
         await ctx.stub.putState(alutsistaAssetId, buffer);
-        const eventPayload: Buffer = Buffer.from(`Created asset ${alutsistaAssetId} (${value})`);
+        const eventPayload: Buffer = Buffer.from(`Created asset ${alutsistaAssetId} (${name})`);
         ctx.stub.setEvent('myEvent', eventPayload);
     }
 
