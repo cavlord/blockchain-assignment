@@ -9,8 +9,8 @@ export class AlutsistaAsset {
 
     @Property()
     public value: string;
-    year: any;
     name: string;
     countryOrigin: string;
+    type: string;
 
 }

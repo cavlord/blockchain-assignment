@@ -16,7 +16,11 @@ export class AlutsistaAssetContract extends Contract {
     }
 
     @Transaction()
-    public async createAlutsistaAsset(ctx: Context, alutsistaAssetId: string, name: string, countryOrigin: string): Promise<void> {
+    public async createAlutsistaAsset(ctx: Context, alutsistaAssetId: string, name: string, countryOrigin: string, type: string): Promise<void> {
+        const hasAccess = await this.hasRole(ctx, ['Manufacturer']);
+        if (!hasAccess) {
+            throw new Error(`Only manufacturer can create alutsista asset`);
+        }        
         const exists: boolean = await this.alutsistaAssetExists(ctx, alutsistaAssetId);
         if (exists) {
             throw new Error(`The alutsista asset ${alutsistaAssetId} already exists`);
@@ -24,15 +28,19 @@ export class AlutsistaAssetContract extends Contract {
         const alutsistaAsset: AlutsistaAsset = new AlutsistaAsset();
         alutsistaAsset.name = name;
         alutsistaAsset.countryOrigin = countryOrigin;
+        alutsistaAsset.type = type;
         const buffer: Buffer = Buffer.from(JSON.stringify(alutsistaAsset));
         await ctx.stub.putState(alutsistaAssetId, buffer);
-        const eventPayload: Buffer = Buffer.from(`Created asset ${alutsistaAssetId} (${name})`);
-        ctx.stub.setEvent('myEvent', eventPayload);
+       
     }
 
     @Transaction(false)
     @Returns('AlutsistaAsset')
     public async readAlutsistaAsset(ctx: Context, alutsistaAssetId: string): Promise<AlutsistaAsset> {
+        const hasAccess = await this.hasRole(ctx, ['Manufacturer', 'Dealer']);
+        if (!hasAccess) {
+            throw new Error(`Only manufacturer or armdealer can update car asset`);
+        }
         const exists: boolean = await this.alutsistaAssetExists(ctx, alutsistaAssetId);
         if (!exists) {
             throw new Error(`The alutsista asset ${alutsistaAssetId} does not exist`);
@@ -56,6 +64,10 @@ export class AlutsistaAssetContract extends Contract {
 
     @Transaction()
     public async deleteAlutsistaAsset(ctx: Context, alutsistaAssetId: string): Promise<void> {
+        const hasAccess = await this.hasRole(ctx, ['Dealer']);
+        if (!hasAccess) {
+            throw new Error(`Only dealer can delete car asset`);
+        }
         const exists: boolean = await this.alutsistaAssetExists(ctx, alutsistaAssetId);
         if (!exists) {
             throw new Error(`The alutsista asset ${alutsistaAssetId} does not exist`);
@@ -90,6 +102,16 @@ export class AlutsistaAssetContract extends Contract {
                 return JSON.stringify(allResults);
             }
         }
+    }
+    public async hasRole(ctx: Context, roles: string[]) {
+        const clientID = ctx.clientIdentity;
+        for (const roleName of roles) {
+            if (clientID.assertAttributeValue('role', roleName)) {
+                if (clientID.getMSPID() === 'Org1MSP' && clientID.getAttributeValue('role') === 'Manufacturer') { return true; }
+                if (clientID.getMSPID() === 'Org2MSP' && clientID.getAttributeValue('role') === 'ArmDealer') { return true; }
+            }
+        }
+        return false;
     }
 
 }
