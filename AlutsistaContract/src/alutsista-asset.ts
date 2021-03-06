@@ -12,5 +12,6 @@ export class AlutsistaAsset {
     name: string;
     countryOrigin: string;
     type: string;
+    remark: string;
 
 }

@@ -32,22 +32,30 @@ export class AlutsistaAssetContract extends Contract {
         const buffer: Buffer = Buffer.from(JSON.stringify(alutsistaAsset));
         await ctx.stub.putState(alutsistaAssetId, buffer);
        
+        const transientMap = ctx.stub.getTransient();
+        if(transientMap.get('remark')){
+            await ctx.stub.putPrivateData('productionRemark',alutsistaAssetId,transientMap.get('remark'));
+        }
     }
 
     @Transaction(false)
     @Returns('AlutsistaAsset')
     public async readAlutsistaAsset(ctx: Context, alutsistaAssetId: string): Promise<AlutsistaAsset> {
-        const hasAccess = await this.hasRole(ctx, ['Manufacturer', 'Dealer']);
-        if (!hasAccess) {
-            throw new Error(`Only manufacturer or armdealer can update car asset`);
+        const exist = await this.alutsistaAssetExists(ctx,alutsistaAssetId);
+        if(!exist){
+            throw new Error(`The Alutsista Assets ${alutsistaAssetId} does not exist`)
         }
-        const exists: boolean = await this.alutsistaAssetExists(ctx, alutsistaAssetId);
-        if (!exists) {
-            throw new Error(`The alutsista asset ${alutsistaAssetId} does not exist`);
+        const buffer = await ctx.stub.getState(alutsistaAssetId);
+        const AlutsistaAsset = JSON.parse(buffer.toString()) as AlutsistaAsset;
+
+        try{
+            const privBuffer = await ctx.stub.getPrivateData('productionRemark', alutsistaAssetId);
+            AlutsistaAsset.remark = privBuffer.toString();
+            return AlutsistaAsset;
         }
-        const data: Uint8Array = await ctx.stub.getState(alutsistaAssetId);
-        const alutsistaAsset: AlutsistaAsset = JSON.parse(data.toString()) as AlutsistaAsset;
-        return alutsistaAsset;
+        catch(error){
+            return AlutsistaAsset;
+        }
     }
 
     @Transaction()
@@ -108,7 +116,7 @@ export class AlutsistaAssetContract extends Contract {
         for (const roleName of roles) {
             if (clientID.assertAttributeValue('role', roleName)) {
                 if (clientID.getMSPID() === 'Org1MSP' && clientID.getAttributeValue('role') === 'Manufacturer') { return true; }
-                if (clientID.getMSPID() === 'Org2MSP' && clientID.getAttributeValue('role') === 'ArmDealer') { return true; }
+                if (clientID.getMSPID() === 'Org2MSP' && clientID.getAttributeValue('role') === 'Dealer') { return true; }
             }
         }
         return false;
